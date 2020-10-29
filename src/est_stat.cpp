@@ -276,15 +276,36 @@ Eigen::MatrixXd RIDGE_multi_K(const Eigen::Map<Eigen::MatrixXd> &X, const Eigen:
 
   // this needs to be computed once.
   Eigen::MatrixXd DUtY = UDV.singularValues().matrix().asDiagonal() * (UDV.matrixU().transpose() * Y);
-  Eigen::MatrixXd VDsq_p = UDV.matrixV() * (Dplus(UDV.singularValues())).matrix().asDiagonal();
+  // Eigen::MatrixXd VDsq_p = UDV.matrixV() * (Dplus(UDV.singularValues())).pow(2).matrix().asDiagonal();
 
   Eigen::MatrixXd B(p, K.size());  
   for (int i = 0; i < K.size(); ++i)
     {
-      B.col(i) = (VDsq_p.array()/K[i]).matrix() * DUtY;
+      Eigen::MatrixXd VDsq_p = UDV.matrixV() * (Dplus(UDV.singularValues().array().pow(2) + K[i])).matrix().asDiagonal();
+      B.col(i) = VDsq_p.matrix() * DUtY;
+      // B.col(i) = (VDsq_p.array()/K[i]).matrix() * DUtY;
     }
 
     return B;
+}
+
+// [[Rcpp::export]]
+Eigen::MatrixXd RIDGE_multi_K_llt(const Eigen::Map<Eigen::MatrixXd> &X, const Eigen::Map<Eigen::MatrixXd> &Y, const Eigen::Map<Eigen::VectorXd> &K)
+{
+  // Eigen::MatrixXd Y = Standardize(Y_input);
+  // Eigen::MatrixXd X = Standardize(X_input);
+
+  int p = X.cols();
+  Eigen::MatrixXd XtX = AtA(X);
+  Eigen::MatrixXd XtY = X.transpose() * Y;
+
+  Eigen::MatrixXd B(p, K.size());
+  for (int i = 0; i < K.size(); ++i)
+  {
+    Eigen::LLT<Eigen::MatrixXd> denom_llt((XtX + (Eigen::MatrixXd::Identity(p, p) * K[i])).selfadjointView<Eigen::Upper>());
+    B.col(i) = denom_llt.solve(XtY);
+  }
+  return B;
 }
 
 // [[Rcpp::export]]
