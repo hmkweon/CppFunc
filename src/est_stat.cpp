@@ -2,6 +2,7 @@
 #include <RcppEigen.h>
 #include <Rcpp/Benchmark/Timer.h>
 #include "utils.hpp"
+
 //[[Rcpp::depends(RcppEigen)]]
 using namespace Rcpp;
 
@@ -221,23 +222,16 @@ List iv_cpp_cluster(const Eigen::Map<Eigen::MatrixXd> &X, const Eigen::Map<Eigen
                       Named("SE") = SE);
 }
 
+
 // [[Rcpp::export]]
 Eigen::MatrixXd RIDGE_K(const Eigen::Map<Eigen::MatrixXd> &X, const Eigen::Map<Eigen::MatrixXd> &Y, const int &K)
 {
   // Eigen::MatrixXd Y = Standardize(Y_input);
   // Eigen::MatrixXd X = Standardize(X_input);
-  Timer timer;
-  timer.step("start");
-  NumericVector timer_res;
 
   int p = X.cols();
-  Rcout << "computing XtX \n";
-  Eigen::MatrixXd XtX = Eigen::MatrixXd(p, p).setZero().selfadjointView<Eigen::Upper>().rankUpdate(X.adjoint());
+  Eigen::MatrixXd XtX = AtA(X);
   
-  timer.step("XtX");
-  timer_res = timer;
-  // double diff = ;
-  Rcout << "computing XtX done:  " << (timer_res[1] - timer_res[0]) * 1000 << " seconds \n";
   Eigen::LLT<Eigen::MatrixXd> denom_llt((XtX + (Eigen::MatrixXd::Identity(p, p) * K)).selfadjointView<Eigen::Upper>());
   Eigen::MatrixXd B = denom_llt.solve(X.transpose() * Y);
 
@@ -264,150 +258,189 @@ Eigen::MatrixXd RIDGE_K(const Eigen::Map<Eigen::MatrixXd> &X, const Eigen::Map<E
 //                       Named("R2") = 1 - sigma * (Y.rows() - p) / (Y.rows() - 1));
 // }
 
+Eigen::ArrayXd Dplus(const Eigen::ArrayXd &d)
+{
+  Eigen::ArrayXd di(d.size());
+  for (int j = 0; j < d.size(); ++j)  di[j] = 1 / d[j];
+  return di;
+}
+
 // [[Rcpp::export]]
-List RIDGE_IV_K(const Eigen::Map<Eigen::MatrixXd> &X_input, const Eigen::Map<Eigen::MatrixXd> &Z_input, const Eigen::Map<Eigen::MatrixXd> &Y_input, const int &K)
+Eigen::MatrixXd RIDGE_multi_K(const Eigen::Map<Eigen::MatrixXd> &X, const Eigen::Map<Eigen::MatrixXd> &Y, const Eigen::Map<Eigen::VectorXd> &K)
 {
 
-  Eigen::MatrixXd Y = Standardize(Y_input);
-  Eigen::MatrixXd X = Standardize(X_input);
-  Eigen::MatrixXd Z = Standardize(Z_input);
+      Eigen::BDCSVD<Eigen::MatrixXd>
+          UDV(X, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
   int p = X.cols();
 
-  Eigen::LLT<Eigen::MatrixXd> llt(Eigen::MatrixXd(p, p).setZero().selfadjointView<Eigen::Upper>().rankUpdate(Z.adjoint()));
-  // Eigen::MatrixXd PZ = Z * llt.solve(Eigen::MatrixXd::Identity(p, p)).selfadjointView<Eigen::Upper>() * Z.transpose();
-  Eigen::MatrixXd Uinv = llt.matrixU().solve(Eigen::MatrixXd::Identity(p, p));
-  Eigen::MatrixXd Z_Univ = Z * Uinv.triangularView<Eigen::Upper>();
-  Eigen::MatrixXd Xt_Z_Univ = X.transpose() * Z_Univ;
-  Eigen::MatrixXd Xt_PZ_X = Eigen::MatrixXd(p, p).setZero().selfadjointView<Eigen::Upper>().rankUpdate(Xt_Z_Univ);
+  // this needs to be computed once.
+  Eigen::MatrixXd DUtY = UDV.singularValues().matrix().asDiagonal() * (UDV.matrixU().transpose() * Y);
+  Eigen::MatrixXd VDsq_p = UDV.matrixV() * (Dplus(UDV.singularValues())).matrix().asDiagonal();
 
-  Eigen::LLT<Eigen::MatrixXd> llt_denom((Xt_PZ_X + Eigen::MatrixXd::Identity(p, p) * K).selfadjointView<Eigen::Upper>());
-  Eigen::VectorXd B = llt_denom.solve(Xt_Z_Univ * (Z_Univ.transpose() * Y));
-  Eigen::MatrixXd INV = llt_denom.solve(Eigen::MatrixXd::Identity(p, p));
-  double sigma = (Y - X * B).squaredNorm() / (Y.rows() - p);
-  Eigen::VectorXd SE = sqrt(sigma) * (INV.selfadjointView<Eigen::Upper>() * Xt_PZ_X * INV.selfadjointView<Eigen::Upper>()).diagonal().cwiseSqrt();
+  Eigen::MatrixXd B(p, K.size());  
+  for (int i = 0; i < K.size(); ++i)
+    {
+      B.col(i) = (VDsq_p.array()/K[i]).matrix() * DUtY;
+    }
+
+    return B;
+}
+
+// [[Rcpp::export]]
+List SVD_cpp(const Eigen::Map<Eigen::MatrixXd> &X)
+{
+  Eigen::BDCSVD<Eigen::MatrixXd> UDV(X, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+  return List::create(Named("d") = UDV.singularValues(),
+                      Named("U") = UDV.matrixU(),
+                      Named("V") = UDV.matrixV());
+}
+
+  // [[Rcpp::export]]
+  List RIDGE_IV_K(const Eigen::Map<Eigen::MatrixXd> &X_input, const Eigen::Map<Eigen::MatrixXd> &Z_input, const Eigen::Map<Eigen::MatrixXd> &Y_input, const int &K)
+  {
+
+    Eigen::MatrixXd Y = Standardize(Y_input);
+    Eigen::MatrixXd X = Standardize(X_input);
+    Eigen::MatrixXd Z = Standardize(Z_input);
+    int p = X.cols();
+
+    Eigen::LLT<Eigen::MatrixXd> llt(Eigen::MatrixXd(p, p).setZero().selfadjointView<Eigen::Upper>().rankUpdate(Z.adjoint()));
+    // Eigen::MatrixXd PZ = Z * llt.solve(Eigen::MatrixXd::Identity(p, p)).selfadjointView<Eigen::Upper>() * Z.transpose();
+    Eigen::MatrixXd Uinv = llt.matrixU().solve(Eigen::MatrixXd::Identity(p, p));
+    Eigen::MatrixXd Z_Univ = Z * Uinv.triangularView<Eigen::Upper>();
+    Eigen::MatrixXd Xt_Z_Univ = X.transpose() * Z_Univ;
+    Eigen::MatrixXd Xt_PZ_X = Eigen::MatrixXd(p, p).setZero().selfadjointView<Eigen::Upper>().rankUpdate(Xt_Z_Univ);
+
+    Eigen::LLT<Eigen::MatrixXd> llt_denom((Xt_PZ_X + Eigen::MatrixXd::Identity(p, p) * K).selfadjointView<Eigen::Upper>());
+    Eigen::VectorXd B = llt_denom.solve(Xt_Z_Univ * (Z_Univ.transpose() * Y));
+    Eigen::MatrixXd INV = llt_denom.solve(Eigen::MatrixXd::Identity(p, p));
+    double sigma = (Y - X * B).squaredNorm() / (Y.rows() - p);
+    Eigen::VectorXd SE = sqrt(sigma) * (INV.selfadjointView<Eigen::Upper>() * Xt_PZ_X * INV.selfadjointView<Eigen::Upper>()).diagonal().cwiseSqrt();
+
+    // Eigen::MatrixXd output(2, B.rows());
+    // output << B.transpose(), SE.transpose();
+    // return output;
+    return List::create(Named("BETA") = B,
+                        Named("SE") = SE,
+                        Named("R2") = 1 - sigma * (Y.rows() - p) / (Y.rows() - 1));
+  }
+
+  // // [[Rcpp::export]]
+  // Eigen::MatrixXd RIDGE_IV_K_test(const Eigen::Map<Eigen::MatrixXd>& X_input, const Eigen::Map<Eigen::MatrixXd>& Z_input, const Eigen::Map<Eigen::MatrixXd>& Y_input,  const int& K) {
+
+  //   Eigen::MatrixXd Y = Standardize(Y_input);
+  //   Eigen::MatrixXd X = Standardize(X_input);
+  //   Eigen::MatrixXd Z = Standardize(Z_input);
+
+  //   Eigen::LLT<Eigen::MatrixXd> llt;
+  //   llt.compute(Z.transpose() * Z);
+  //   Eigen::MatrixXd PZ = Z * llt.solve(Eigen::MatrixXd::Identity(X.cols(), X.cols())) * Z.transpose();
+  //   Eigen::MatrixXd XPZX = X.transpose() * PZ * X;
+  //   Eigen::MatrixXd XPZY = X.transpose() * PZ * Y;
+
+  //   llt.compute(XPZX + Eigen::MatrixXd::Identity(X.cols(), X.cols()) * K);
+  //   Eigen::VectorXd B = llt.solve(XPZY);
+  //   Eigen::MatrixXd INV = llt.solve(Eigen::MatrixXd::Identity(X.cols(), X.cols()));
+  //   double sigma = (Y - X * B).squaredNorm() / (Y.rows() - X.cols());
+  //   Eigen::VectorXd SE = sqrt(sigma) * (INV * XPZX * INV).diagonal().cwiseSqrt();
+
+  //   Eigen::MatrixXd output(2, B.rows());
+  //   output << B.transpose(), SE.transpose();
+  //   return output;
+  // }
+
+  // // [[Rcpp::export]]
+  // Eigen::MatrixXd RIDGE_LW(const Eigen::Map<Eigen::MatrixXd>& X_input, const Eigen::Map<Eigen::MatrixXd>& Y_input) {
+
+  // Eigen::MatrixXd Y = Standardize(Y_input);
+  // Eigen::MatrixXd X = Standardize(X_input);
+  // Eigen::MatrixXd XtX = X.transpose()*X;
+
+  //   // determine K
+  //   Eigen::VectorXd B_ols = XtX.llt().solve(X.transpose()*Y);
+  //   double sigma_ols = (Y - X*B_ols).squaredNorm() / (Y.rows() - X.cols());
+  //   double K = X.cols() * sigma_ols / (B_ols.array() * XtX.eigenvalues().cwiseSqrt().array()).matrix().squaredNorm();
+
+  //   std::cout << "-- parameter lambda: " << K << std::endl ;
+
+  // Eigen::LLT<Eigen::MatrixXd> llt;
+  // llt.compute(XtX + Eigen::MatrixXd::Identity(X.cols(), X.cols()) * K );
+  // Eigen::VectorXd B = llt.solve(X.transpose()*Y);
+  // Eigen::MatrixXd INV = llt.solve( Eigen::MatrixXd::Identity(X.cols(), X.cols()) );
+  // double sigma = (Y - X*B).squaredNorm() / (Y.rows() - X.cols());
+  // Eigen::VectorXd SE = (sigma * INV * XtX * INV).diagonal().cwiseSqrt();
 
   // Eigen::MatrixXd output(2, B.rows());
   // output << B.transpose(), SE.transpose();
   // return output;
-  return List::create(Named("BETA") = B,
-                      Named("SE") = SE,
-                      Named("R2") = 1 - sigma * (Y.rows() - p) / (Y.rows() - 1));
-}
+  // }
 
-// // [[Rcpp::export]]
-// Eigen::MatrixXd RIDGE_IV_K_test(const Eigen::Map<Eigen::MatrixXd>& X_input, const Eigen::Map<Eigen::MatrixXd>& Z_input, const Eigen::Map<Eigen::MatrixXd>& Y_input,  const int& K) {
+  // // [[Rcpp::export]]
+  // Eigen::MatrixXd RIDGE_HK(const Eigen::Map<Eigen::MatrixXd>& X_input, const Eigen::Map<Eigen::MatrixXd>& Y_input) {
 
-//   Eigen::MatrixXd Y = Standardize(Y_input);
-//   Eigen::MatrixXd X = Standardize(X_input);
-//   Eigen::MatrixXd Z = Standardize(Z_input);
+  // Eigen::MatrixXd Y = Standardize(Y_input);
+  // Eigen::MatrixXd X = Standardize(X_input);
+  // Eigen::MatrixXd XtX = X.transpose()*X;
 
-//   Eigen::LLT<Eigen::MatrixXd> llt;
-//   llt.compute(Z.transpose() * Z);
-//   Eigen::MatrixXd PZ = Z * llt.solve(Eigen::MatrixXd::Identity(X.cols(), X.cols())) * Z.transpose();
-//   Eigen::MatrixXd XPZX = X.transpose() * PZ * X;
-//   Eigen::MatrixXd XPZY = X.transpose() * PZ * Y;
+  //   // determine K
+  //   Eigen::VectorXd B_ols = XtX.llt().solve(X.transpose()*Y);
+  //   double sigma_ols = (Y - X*B_ols).squaredNorm() / (Y.rows() - X.cols());
+  //   double K = X.cols() * sigma_ols / B_ols.squaredNorm();
 
-//   llt.compute(XPZX + Eigen::MatrixXd::Identity(X.cols(), X.cols()) * K);
-//   Eigen::VectorXd B = llt.solve(XPZY);
-//   Eigen::MatrixXd INV = llt.solve(Eigen::MatrixXd::Identity(X.cols(), X.cols()));
-//   double sigma = (Y - X * B).squaredNorm() / (Y.rows() - X.cols());
-//   Eigen::VectorXd SE = sqrt(sigma) * (INV * XPZX * INV).diagonal().cwiseSqrt();
+  //   std::cout << "-- parameter lambda: " << K << std::endl ;
 
-//   Eigen::MatrixXd output(2, B.rows());
-//   output << B.transpose(), SE.transpose();
-//   return output;
-// }
+  // Eigen::LLT<Eigen::MatrixXd> llt;
+  // llt.compute(XtX + Eigen::MatrixXd::Identity(X.cols(), X.cols()) * K );
+  // Eigen::VectorXd B = llt.solve(X.transpose()*Y);
+  // Eigen::MatrixXd INV = llt.solve( Eigen::MatrixXd::Identity(X.cols(), X.cols()) );
+  // double sigma = (Y - X*B).squaredNorm() / (Y.rows() - X.cols());
+  // Eigen::VectorXd SE = (sigma * INV * XtX * INV).diagonal().cwiseSqrt();
 
-// // [[Rcpp::export]]
-// Eigen::MatrixXd RIDGE_LW(const Eigen::Map<Eigen::MatrixXd>& X_input, const Eigen::Map<Eigen::MatrixXd>& Y_input) {
+  // Eigen::MatrixXd output(2, B.rows());
+  // output << B.transpose(), SE.transpose();
+  // return output;
+  // }
 
-// Eigen::MatrixXd Y = Standardize(Y_input);
-// Eigen::MatrixXd X = Standardize(X_input);
-// Eigen::MatrixXd XtX = X.transpose()*X;
+  // ArrayXd E = (stdY - Q*QtY).array();
+  // double SSR = E.square().sum();
+  // ArrayXd E_r = (stdY - Q_r*(Q_r.transpose()*stdY)).array();
+  // double SSR_r = E_r.square().sum();
 
-//   // determine K
-//   Eigen::VectorXd B_ols = XtX.llt().solve(X.transpose()*Y);
-//   double sigma_ols = (Y - X*B_ols).squaredNorm() / (Y.rows() - X.cols());
-//   double K = X.cols() * sigma_ols / (B_ols.array() * XtX.eigenvalues().cwiseSqrt().array()).matrix().squaredNorm();
+  // VectorXd chol_solve(const Map<MatrixXd> &X, const Map<MatrixXd> &Q, const Map<VectorXd> &Y) {
 
-//   std::cout << "-- parameter lambda: " << K << std::endl ;
+  // VectorXd XtY = X.transpose()*Y;
+  // VectorXd B = Q.llt().solve(XtY);
+  // return B;
+  // }
 
-// Eigen::LLT<Eigen::MatrixXd> llt;
-// llt.compute(XtX + Eigen::MatrixXd::Identity(X.cols(), X.cols()) * K );
-// Eigen::VectorXd B = llt.solve(X.transpose()*Y);
-// Eigen::MatrixXd INV = llt.solve( Eigen::MatrixXd::Identity(X.cols(), X.cols()) );
-// double sigma = (Y - X*B).squaredNorm() / (Y.rows() - X.cols());
-// Eigen::VectorXd SE = (sigma * INV * XtX * INV).diagonal().cwiseSqrt();
+  // VectorXd reg_F(const Map<MatrixXd> &R, const Map<MatrixXd> &Q, Map<MatrixXd> &Q_r, const Map<VectorXd> &Y) {
 
-// Eigen::MatrixXd output(2, B.rows());
-// output << B.transpose(), SE.transpose();
-// return output;
-// }
+  // // int nrow = Y.rows();
+  // // int ncol = Y.cols();
+  // // int p    = R.rows();
 
-// // [[Rcpp::export]]
-// Eigen::MatrixXd RIDGE_HK(const Eigen::Map<Eigen::MatrixXd>& X_input, const Eigen::Map<Eigen::MatrixXd>& Y_input) {
+  // VectorXd stdY = Standardize(Y);
+  // VectorXd QtY = Q.transpose()*stdY;
+  // VectorXd B = R.triangularView<Upper>().solve(QtY);
+  // double SSR = (stdY - Q*QtY).squaredNorm();
+  // double SSR_r = (stdY - Q_r*(Q_r.transpose()*stdY)).squaredNorm();
 
-// Eigen::MatrixXd Y = Standardize(Y_input);
-// Eigen::MatrixXd X = Standardize(X_input);
-// Eigen::MatrixXd XtX = X.transpose()*X;
+  // VectorXd output(B.rows() + 2);
+  // output << B, SSR, SSR_r;
+  // return output;
+  // }
 
-//   // determine K
-//   Eigen::VectorXd B_ols = XtX.llt().solve(X.transpose()*Y);
-//   double sigma_ols = (Y - X*B_ols).squaredNorm() / (Y.rows() - X.cols());
-//   double K = X.cols() * sigma_ols / B_ols.squaredNorm();
+  // MatrixXd reg_F(const Map<MatrixXd> &R, const Map<MatrixXd> &Q, Map<MatrixXd> &Q_r, const Map<MatrixXd> &Y) {
 
-//   std::cout << "-- parameter lambda: " << K << std::endl ;
+  // MatrixXd stdY = Standardize(Y);
+  // MatrixXd QtY = Q.transpose()*stdY;
+  // MatrixXd B = R.triangularView<Upper>().solve(QtY);
+  // VectorXd SSR = (stdY - Q*QtY).colwise().squaredNorm();
+  // VectorXd SSR_r = (stdY - Q_r*(Q_r.transpose()*stdY)).colwise().squaredNorm();
 
-// Eigen::LLT<Eigen::MatrixXd> llt;
-// llt.compute(XtX + Eigen::MatrixXd::Identity(X.cols(), X.cols()) * K );
-// Eigen::VectorXd B = llt.solve(X.transpose()*Y);
-// Eigen::MatrixXd INV = llt.solve( Eigen::MatrixXd::Identity(X.cols(), X.cols()) );
-// double sigma = (Y - X*B).squaredNorm() / (Y.rows() - X.cols());
-// Eigen::VectorXd SE = (sigma * INV * XtX * INV).diagonal().cwiseSqrt();
-
-// Eigen::MatrixXd output(2, B.rows());
-// output << B.transpose(), SE.transpose();
-// return output;
-// }
-
-// ArrayXd E = (stdY - Q*QtY).array();
-// double SSR = E.square().sum();
-// ArrayXd E_r = (stdY - Q_r*(Q_r.transpose()*stdY)).array();
-// double SSR_r = E_r.square().sum();
-
-// VectorXd chol_solve(const Map<MatrixXd> &X, const Map<MatrixXd> &Q, const Map<VectorXd> &Y) {
-
-// VectorXd XtY = X.transpose()*Y;
-// VectorXd B = Q.llt().solve(XtY);
-// return B;
-// }
-
-// VectorXd reg_F(const Map<MatrixXd> &R, const Map<MatrixXd> &Q, Map<MatrixXd> &Q_r, const Map<VectorXd> &Y) {
-
-// // int nrow = Y.rows();
-// // int ncol = Y.cols();
-// // int p    = R.rows();
-
-// VectorXd stdY = Standardize(Y);
-// VectorXd QtY = Q.transpose()*stdY;
-// VectorXd B = R.triangularView<Upper>().solve(QtY);
-// double SSR = (stdY - Q*QtY).squaredNorm();
-// double SSR_r = (stdY - Q_r*(Q_r.transpose()*stdY)).squaredNorm();
-
-// VectorXd output(B.rows() + 2);
-// output << B, SSR, SSR_r;
-// return output;
-// }
-
-// MatrixXd reg_F(const Map<MatrixXd> &R, const Map<MatrixXd> &Q, Map<MatrixXd> &Q_r, const Map<MatrixXd> &Y) {
-
-// MatrixXd stdY = Standardize(Y);
-// MatrixXd QtY = Q.transpose()*stdY;
-// MatrixXd B = R.triangularView<Upper>().solve(QtY);
-// VectorXd SSR = (stdY - Q*QtY).colwise().squaredNorm();
-// VectorXd SSR_r = (stdY - Q_r*(Q_r.transpose()*stdY)).colwise().squaredNorm();
-
-// MatrixXd output(B.rows() + 2, B.cols());
-// output << B, SSR.transpose(), SSR_r.transpose();
-// return output;
-// }
+  // MatrixXd output(B.rows() + 2, B.cols());
+  // output << B, SSR.transpose(), SSR_r.transpose();
+  // return output;
+  // }

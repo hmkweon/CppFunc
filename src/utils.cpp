@@ -94,11 +94,12 @@ Eigen::MatrixXd make_res(const Eigen::Map<Eigen::MatrixXd> &X, const Eigen::Map<
     return E;
 }
 
+// These functions will be slower if n >> p
+
 // [[Rcpp::export]]
 Eigen::MatrixXd get_XXt(const Eigen::Map<Eigen::MatrixXd> &X)
 {
-    Eigen::MatrixXd output(Eigen::MatrixXd(X.rows(), X.rows()).setZero().selfadjointView<Eigen::Upper>().rankUpdate(X));
-    return output.selfadjointView<Eigen::Upper>();
+    Eigen::MatrixXd(X.rows(), X.rows()).setZero().selfadjointView<Eigen::Upper>().rankUpdate(X);
 }
 
 Eigen::MatrixXd AAt(const Eigen::MatrixXd &X)
@@ -106,11 +107,12 @@ Eigen::MatrixXd AAt(const Eigen::MatrixXd &X)
     return Eigen::MatrixXd(X.rows(), X.rows()).setZero().selfadjointView<Eigen::Upper>().rankUpdate(X);
 }
 
+// using selfadjointview slower if p>>n i.e., numer of vars >>> number of indiv.
+
 // [[Rcpp::export]]
 Eigen::MatrixXd get_XtX(const Eigen::Map<Eigen::MatrixXd> &X)
 {
-    Eigen::MatrixXd output(Eigen::MatrixXd(X.cols(), X.cols()).setZero().selfadjointView<Eigen::Upper>().rankUpdate(X.adjoint()));
-    return output.selfadjointView<Eigen::Upper>();
+    return Eigen::MatrixXd(X.cols(), X.cols()).setZero().selfadjointView<Eigen::Upper>().rankUpdate(X.adjoint());
 }
 
 Eigen::MatrixXd AtA(const Eigen::MatrixXd &X)

@@ -69,6 +69,14 @@ RIDGE_K <- function(X, Y, K) {
     .Call(`_CppFunc_RIDGE_K`, X, Y, K)
 }
 
+RIDGE_multi_K <- function(X, Y, K) {
+    .Call(`_CppFunc_RIDGE_multi_K`, X, Y, K)
+}
+
+SVD_cpp <- function(X) {
+    .Call(`_CppFunc_SVD_cpp`, X)
+}
+
 RIDGE_IV_K <- function(X_input, Z_input, Y_input, K) {
     .Call(`_CppFunc_RIDGE_IV_K`, X_input, Z_input, Y_input, K)
 }
