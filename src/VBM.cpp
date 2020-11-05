@@ -129,6 +129,19 @@ Eigen::MatrixXd perm_mri(const Eigen::Map<Eigen::MatrixXd> &Q, const Eigen::Map<
 }
 
 // [[Rcpp::export]]
+Eigen::MatrixXd perm_mri_t(const Eigen::Map<Eigen::MatrixXd> &Q, const Eigen::Map<Eigen::MatrixXd> &R, const Eigen::Map<Eigen::MatrixXd> &Y, const Eigen::Map<Eigen::VectorXd> &varX_div_DF)
+{
+    int K = varX_div_DF.size();
+    Eigen::MatrixXd QtY = Q.transpose() * Y;
+    Eigen::MatrixXd B = R.triangularView<Eigen::Upper>().solve(QtY).topRows(K + 1).bottomRows(K); //return only beta for SES variables
+
+    Eigen::MatrixXd SSR = (Y - Q * QtY).colwise().squaredNorm().cwiseSqrt();
+    Eigen::MatrixXd SE = varX_div_DF.cwiseSqrt() * SSR;
+
+    return B.cwiseProduct(SE.cwiseInverse());
+}
+
+// [[Rcpp::export]]
 Eigen::MatrixXd IV_F(const Eigen::Map<Eigen::MatrixXd> &X, const Eigen::Map<Eigen::MatrixXd> &R, const Eigen::Map<Eigen::MatrixXd> &Q, Eigen::Map<Eigen::MatrixXd> &Q_r, const DataFrame &Y, const IntegerVector &IND, const int &K)
 {
 

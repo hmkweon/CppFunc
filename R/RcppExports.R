@@ -37,6 +37,10 @@ perm_mri <- function(Q, Q_r, Y, DF) {
     .Call(`_CppFunc_perm_mri`, Q, Q_r, Y, DF)
 }
 
+perm_mri_t <- function(Q, R, Y, varX_div_DF) {
+    .Call(`_CppFunc_perm_mri_t`, Q, R, Y, varX_div_DF)
+}
+
 IV_F <- function(X, R, Q, Q_r, Y, IND, K) {
     .Call(`_CppFunc_IV_F`, X, R, Q, Q_r, Y, IND, K)
 }
@@ -73,8 +77,12 @@ RIDGE_multi_K <- function(X, Y, K) {
     .Call(`_CppFunc_RIDGE_multi_K`, X, Y, K)
 }
 
-RIDGE_multi_K_llt <- function(X, Y, K) {
-    .Call(`_CppFunc_RIDGE_multi_K_llt`, X, Y, K)
+RIDGE_L <- function(X, Y, L) {
+    .Call(`_CppFunc_RIDGE_L`, X, Y, L)
+}
+
+RIDGE_L_Kfolds <- function(XtX, XtY, L) {
+    .Call(`_CppFunc_RIDGE_L_Kfolds`, XtX, XtY, L)
 }
 
 SVD_cpp <- function(X) {

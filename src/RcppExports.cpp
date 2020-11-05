@@ -134,6 +134,20 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// perm_mri_t
+Eigen::MatrixXd perm_mri_t(const Eigen::Map<Eigen::MatrixXd>& Q, const Eigen::Map<Eigen::MatrixXd>& R, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::VectorXd>& varX_div_DF);
+RcppExport SEXP _CppFunc_perm_mri_t(SEXP QSEXP, SEXP RSEXP, SEXP YSEXP, SEXP varX_div_DFSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type R(RSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::VectorXd>& >::type varX_div_DF(varX_div_DFSEXP);
+    rcpp_result_gen = Rcpp::wrap(perm_mri_t(Q, R, Y, varX_div_DF));
+    return rcpp_result_gen;
+END_RCPP
+}
 // IV_F
 Eigen::MatrixXd IV_F(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& R, const Eigen::Map<Eigen::MatrixXd>& Q, Eigen::Map<Eigen::MatrixXd>& Q_r, const DataFrame& Y, const IntegerVector& IND, const int& K);
 RcppExport SEXP _CppFunc_IV_F(SEXP XSEXP, SEXP RSEXP, SEXP QSEXP, SEXP Q_rSEXP, SEXP YSEXP, SEXP INDSEXP, SEXP KSEXP) {
@@ -254,16 +268,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// RIDGE_multi_K_llt
-Eigen::MatrixXd RIDGE_multi_K_llt(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::VectorXd>& K);
-RcppExport SEXP _CppFunc_RIDGE_multi_K_llt(SEXP XSEXP, SEXP YSEXP, SEXP KSEXP) {
+// RIDGE_L
+Eigen::MatrixXd RIDGE_L(const Eigen::Map<Eigen::MatrixXd>& X, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::VectorXd>& L);
+RcppExport SEXP _CppFunc_RIDGE_L(SEXP XSEXP, SEXP YSEXP, SEXP LSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type X(XSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
-    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::VectorXd>& >::type K(KSEXP);
-    rcpp_result_gen = Rcpp::wrap(RIDGE_multi_K_llt(X, Y, K));
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::VectorXd>& >::type L(LSEXP);
+    rcpp_result_gen = Rcpp::wrap(RIDGE_L(X, Y, L));
+    return rcpp_result_gen;
+END_RCPP
+}
+// RIDGE_L_Kfolds
+Eigen::MatrixXd RIDGE_L_Kfolds(const Eigen::Map<Eigen::MatrixXd>& XtX, const Eigen::Map<Eigen::MatrixXd>& XtY, const Eigen::Map<Eigen::VectorXd>& L);
+RcppExport SEXP _CppFunc_RIDGE_L_Kfolds(SEXP XtXSEXP, SEXP XtYSEXP, SEXP LSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type XtX(XtXSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type XtY(XtYSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::VectorXd>& >::type L(LSEXP);
+    rcpp_result_gen = Rcpp::wrap(RIDGE_L_Kfolds(XtX, XtY, L));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -348,6 +375,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_CppFunc_res_vox", (DL_FUNC) &_CppFunc_res_vox, 3},
     {"_CppFunc_res_ROI", (DL_FUNC) &_CppFunc_res_ROI, 2},
     {"_CppFunc_perm_mri", (DL_FUNC) &_CppFunc_perm_mri, 4},
+    {"_CppFunc_perm_mri_t", (DL_FUNC) &_CppFunc_perm_mri_t, 4},
     {"_CppFunc_IV_F", (DL_FUNC) &_CppFunc_IV_F, 7},
     {"_CppFunc_lm_cpp", (DL_FUNC) &_CppFunc_lm_cpp, 2},
     {"_CppFunc_lm_cpp_het", (DL_FUNC) &_CppFunc_lm_cpp_het, 2},
@@ -357,7 +385,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_CppFunc_iv_cpp_cluster", (DL_FUNC) &_CppFunc_iv_cpp_cluster, 4},
     {"_CppFunc_RIDGE_K", (DL_FUNC) &_CppFunc_RIDGE_K, 3},
     {"_CppFunc_RIDGE_multi_K", (DL_FUNC) &_CppFunc_RIDGE_multi_K, 3},
-    {"_CppFunc_RIDGE_multi_K_llt", (DL_FUNC) &_CppFunc_RIDGE_multi_K_llt, 3},
+    {"_CppFunc_RIDGE_L", (DL_FUNC) &_CppFunc_RIDGE_L, 3},
+    {"_CppFunc_RIDGE_L_Kfolds", (DL_FUNC) &_CppFunc_RIDGE_L_Kfolds, 3},
     {"_CppFunc_SVD_cpp", (DL_FUNC) &_CppFunc_SVD_cpp, 1},
     {"_CppFunc_RIDGE_IV_K", (DL_FUNC) &_CppFunc_RIDGE_IV_K, 4},
     {"_CppFunc_Stdz", (DL_FUNC) &_CppFunc_Stdz, 1},
