@@ -125,20 +125,27 @@ Eigen::MatrixXd perm_mri(const Eigen::Map<Eigen::MatrixXd> &Q, const Eigen::Map<
     Eigen::ArrayXd SSR = (Y - Q * (Q.transpose() * Y)).colwise().squaredNorm();
     Eigen::ArrayXd SSR_r = (Y - Q_r * (Q_r.transpose() * Y)).colwise().squaredNorm();
 
-    return ((SSR_r - SSR) / 2) / (SSR / DF);
+    return (((SSR_r - SSR) / 2) / (SSR / DF)).matrix();
 }
 
+
 // [[Rcpp::export]]
-Eigen::MatrixXd perm_mri_t(const Eigen::Map<Eigen::MatrixXd> &Q, const Eigen::Map<Eigen::MatrixXd> &R, const Eigen::Map<Eigen::MatrixXd> &Y, const Eigen::Map<Eigen::VectorXd> &varX_div_DF)
+Eigen::MatrixXd perm_mri_t(const Eigen::Map<Eigen::MatrixXd> &Q, const Eigen::Map<Eigen::MatrixXd> &Q_r, const Eigen::Map<Eigen::MatrixXd> &R, const Eigen::Map<Eigen::MatrixXd> &Y, const Eigen::Map<Eigen::VectorXd> &varX_div_DF)
 {
     int K = varX_div_DF.size();
     Eigen::MatrixXd QtY = Q.transpose() * Y;
     Eigen::MatrixXd B = R.triangularView<Eigen::Upper>().solve(QtY).topRows(K + 1).bottomRows(K); //return only beta for SES variables
 
-    Eigen::MatrixXd SSR = (Y - Q * QtY).colwise().squaredNorm().cwiseSqrt();
-    Eigen::MatrixXd SE = varX_div_DF.cwiseSqrt() * SSR;
+    Eigen::MatrixXd SSR = (Y - Q * QtY).colwise().squaredNorm();
+    Eigen::MatrixXd SE = (varX_div_DF * SSR).cwiseSqrt();
 
-    return B.cwiseProduct(SE.cwiseInverse());
+    Eigen::MatrixXd SSR_r = (Y - Q_r * (Q_r.transpose() * Y)).colwise().squaredNorm();
+    Eigen::MatrixXd F = ((SSR_r - SSR) / K).cwiseProduct( (SSR/ (Q.rows() - R.rows())).cwiseInverse() );
+
+    Eigen::MatrixXd OUT(B.rows() + F.rows(), B.cols());
+    OUT << B.cwiseProduct(SE.cwiseInverse()), F;
+    
+    return OUT;
 }
 
 // [[Rcpp::export]]

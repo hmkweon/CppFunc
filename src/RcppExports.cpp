@@ -135,16 +135,17 @@ BEGIN_RCPP
 END_RCPP
 }
 // perm_mri_t
-Eigen::MatrixXd perm_mri_t(const Eigen::Map<Eigen::MatrixXd>& Q, const Eigen::Map<Eigen::MatrixXd>& R, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::VectorXd>& varX_div_DF);
-RcppExport SEXP _CppFunc_perm_mri_t(SEXP QSEXP, SEXP RSEXP, SEXP YSEXP, SEXP varX_div_DFSEXP) {
+Eigen::MatrixXd perm_mri_t(const Eigen::Map<Eigen::MatrixXd>& Q, const Eigen::Map<Eigen::MatrixXd>& Q_r, const Eigen::Map<Eigen::MatrixXd>& R, const Eigen::Map<Eigen::MatrixXd>& Y, const Eigen::Map<Eigen::VectorXd>& varX_div_DF);
+RcppExport SEXP _CppFunc_perm_mri_t(SEXP QSEXP, SEXP Q_rSEXP, SEXP RSEXP, SEXP YSEXP, SEXP varX_div_DFSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Q(QSEXP);
+    Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Q_r(Q_rSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type R(RSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::MatrixXd>& >::type Y(YSEXP);
     Rcpp::traits::input_parameter< const Eigen::Map<Eigen::VectorXd>& >::type varX_div_DF(varX_div_DFSEXP);
-    rcpp_result_gen = Rcpp::wrap(perm_mri_t(Q, R, Y, varX_div_DF));
+    rcpp_result_gen = Rcpp::wrap(perm_mri_t(Q, Q_r, R, Y, varX_div_DF));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -375,7 +376,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_CppFunc_res_vox", (DL_FUNC) &_CppFunc_res_vox, 3},
     {"_CppFunc_res_ROI", (DL_FUNC) &_CppFunc_res_ROI, 2},
     {"_CppFunc_perm_mri", (DL_FUNC) &_CppFunc_perm_mri, 4},
-    {"_CppFunc_perm_mri_t", (DL_FUNC) &_CppFunc_perm_mri_t, 4},
+    {"_CppFunc_perm_mri_t", (DL_FUNC) &_CppFunc_perm_mri_t, 5},
     {"_CppFunc_IV_F", (DL_FUNC) &_CppFunc_IV_F, 7},
     {"_CppFunc_lm_cpp", (DL_FUNC) &_CppFunc_lm_cpp, 2},
     {"_CppFunc_lm_cpp_het", (DL_FUNC) &_CppFunc_lm_cpp_het, 2},

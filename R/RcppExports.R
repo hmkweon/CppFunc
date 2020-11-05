@@ -37,8 +37,8 @@ perm_mri <- function(Q, Q_r, Y, DF) {
     .Call(`_CppFunc_perm_mri`, Q, Q_r, Y, DF)
 }
 
-perm_mri_t <- function(Q, R, Y, varX_div_DF) {
-    .Call(`_CppFunc_perm_mri_t`, Q, R, Y, varX_div_DF)
+perm_mri_t <- function(Q, Q_r, R, Y, varX_div_DF) {
+    .Call(`_CppFunc_perm_mri_t`, Q, Q_r, R, Y, varX_div_DF)
 }
 
 IV_F <- function(X, R, Q, Q_r, Y, IND, K) {
