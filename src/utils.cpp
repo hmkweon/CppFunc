@@ -119,3 +119,12 @@ Eigen::MatrixXd AtA(const Eigen::MatrixXd &X)
 {
     return Eigen::MatrixXd(X.cols(), X.cols()).setZero().selfadjointView<Eigen::Upper>().rankUpdate(X.adjoint());
 }
+
+
+// List householder_QR(const Eigen::Map<Eigen::MatrixXd> &X)
+// {
+//     Eigen::ColPivHouseholderQR<Eigen::MatrixXd> QR(X);
+
+//     return List::create(Named("Q") = QR.householderQ(),
+//                         Named("R") = QR.matrixQR().triangularView<Eigen::Upper>());
+// }

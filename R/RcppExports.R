@@ -21,8 +21,8 @@ reg_cov <- function(R, Q, Y, IND, K) {
     .Call(`_CppFunc_reg_cov`, R, Q, Y, IND, K)
 }
 
-reg_F_ROI <- function(R, Q, Q_r, Y) {
-    .Call(`_CppFunc_reg_F_ROI`, R, Q, Q_r, Y)
+reg_F_ROI <- function(R, Q, Q_r, Y, K) {
+    .Call(`_CppFunc_reg_F_ROI`, R, Q, Q_r, Y, K)
 }
 
 res_vox <- function(Q, Y, IND) {
@@ -33,8 +33,8 @@ res_ROI <- function(Q, Y) {
     .Call(`_CppFunc_res_ROI`, Q, Y)
 }
 
-perm_mri <- function(Q, Q_r, Y, DF) {
-    .Call(`_CppFunc_perm_mri`, Q, Q_r, Y, DF)
+perm_mri <- function(Q, Q_r, Y, DF, K) {
+    .Call(`_CppFunc_perm_mri`, Q, Q_r, Y, DF, K)
 }
 
 perm_mri_t <- function(Q, Q_r, R, Y, varX_div_DF) {

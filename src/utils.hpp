@@ -21,4 +21,6 @@ Eigen::MatrixXd DFtoNM2(const DataFrame &X);
 Eigen::MatrixXd AtA(const Eigen::MatrixXd &X);
 
 Eigen::MatrixXd AAt(const Eigen::MatrixXd &X);
+
+List householderQR(const Eigen::Map<Eigen::MatrixXd> &X);
 #endif

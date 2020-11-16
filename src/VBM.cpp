@@ -84,12 +84,12 @@ Eigen::MatrixXd reg_cov(const Eigen::Map<Eigen::MatrixXd> &R, const Eigen::Map<E
 }
 
 // [[Rcpp::export]]
-Eigen::MatrixXd reg_F_ROI(const Eigen::Map<Eigen::MatrixXd> &R, const Eigen::Map<Eigen::MatrixXd> &Q, const Eigen::Map<Eigen::MatrixXd> &Q_r, const Eigen::Map<Eigen::MatrixXd> Y)
+Eigen::MatrixXd reg_F_ROI(const Eigen::Map<Eigen::MatrixXd> &R, const Eigen::Map<Eigen::MatrixXd> &Q, const Eigen::Map<Eigen::MatrixXd> &Q_r, const Eigen::Map<Eigen::MatrixXd> Y, const int &K)
 {
 
     Eigen::MatrixXd stdY = Standardize(Y);
     Eigen::MatrixXd QtY = Q.transpose() * stdY;
-    Eigen::MatrixXd B = R.triangularView<Eigen::Upper>().solve(QtY).topRows(3).bottomRows(2); //return only beta for SES variables
+    Eigen::MatrixXd B = R.triangularView<Eigen::Upper>().solve(QtY).topRows(K + 1).bottomRows( K ); //return only beta for SES variables
     Eigen::VectorXd SSR = (stdY - Q * QtY).colwise().squaredNorm();
     Eigen::VectorXd SSR_r = (stdY - Q_r * (Q_r.transpose() * stdY)).colwise().squaredNorm();
 
@@ -119,13 +119,13 @@ Eigen::MatrixXd res_ROI(const Eigen::Map<Eigen::MatrixXd> &Q, const DataFrame &Y
 }
 
 // [[Rcpp::export]]
-Eigen::MatrixXd perm_mri(const Eigen::Map<Eigen::MatrixXd> &Q, const Eigen::Map<Eigen::MatrixXd> &Q_r, const Eigen::Map<Eigen::MatrixXd> Y, const int DF)
+Eigen::MatrixXd perm_mri(const Eigen::Map<Eigen::MatrixXd> &Q, const Eigen::Map<Eigen::MatrixXd> &Q_r, const Eigen::Map<Eigen::MatrixXd> Y, const int DF, const int K)
 {
 
     Eigen::ArrayXd SSR = (Y - Q * (Q.transpose() * Y)).colwise().squaredNorm();
     Eigen::ArrayXd SSR_r = (Y - Q_r * (Q_r.transpose() * Y)).colwise().squaredNorm();
 
-    return (((SSR_r - SSR) / 2) / (SSR / DF)).matrix();
+    return (((SSR_r - SSR) / K) / (SSR / DF)).matrix();
 }
 
 

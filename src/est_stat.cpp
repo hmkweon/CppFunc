@@ -133,7 +133,7 @@ List iv_cpp(const Eigen::Map<Eigen::MatrixXd> &X, const Eigen::Map<Eigen::Matrix
 
   int p = X.cols();
 
-  Eigen::LLT<Eigen::MatrixXd> llt_ZtZ(Eigen::MatrixXd(p, p).setZero().selfadjointView<Eigen::Upper>().rankUpdate(Z.adjoint()));
+  Eigen::LLT<Eigen::MatrixXd> llt_ZtZ(AtA(Z));
   // Eigen::MatrixXd PZ = Z * llt.solve(Eigen::MatrixXd::Identity(p, p)).selfadjointView<Eigen::Upper>() * Z.transpose();
   Eigen::MatrixXd Uinv = llt_ZtZ.matrixU().solve(Eigen::MatrixXd::Identity(p, p));
   Eigen::MatrixXd Z_Uinv = Z * Uinv.triangularView<Eigen::Upper>();
